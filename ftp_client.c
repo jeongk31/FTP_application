@@ -1,173 +1,133 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
+#include "client.h"
 
-#define FTP_PORT 21
-#define BUFFER_SIZE 1024
+int	main(void)
+{
+	struct sockaddr_in	server_address;
+	int					client_socket;
+	int					data_socket;
+	char				buffer[BUFFER_SIZE];
 
-// Connect to server
-void connect_to_server(const char *server_address, int *client_socket) {
-    struct sockaddr_in serverAddr;
+	if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		perror("socket creation failed");
+		exit(EXIT_FAILURE);
+	}
 
-    // Create socket
-    *client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (*client_socket < 0) {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
-    }
+	memset(&server_address, 0, sizeof(server_address));
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(PORT);
+	server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    // Connect to server
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(FTP_PORT);
+	if (connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
+	{
+		perror("connect failed");
+		exit(EXIT_FAILURE);
+	}
 
-    if (inet_pton(AF_INET, server_address, &serverAddr.sin_addr) <= 0) {
-        perror("Invalid address/ Address not supported");
-        exit(EXIT_FAILURE);
-    }
+	//wait for server to send response (initial connection)
+	receiveResponse(client_socket);
 
-    if (connect(*client_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Connection Failed");
-        exit(EXIT_FAILURE);
-    }
+	while (1)
+	{
+		printf("ftp> ");
+		memset(buffer, 0, BUFFER_SIZE);
+		fgets(buffer, BUFFER_SIZE, stdin);
 
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, BUFFER_SIZE);
-    read(*client_socket, buffer, BUFFER_SIZE);
-    printf("%s", buffer);
-}
+		//parse input: remove newline
+		buffer[strcspn(buffer, "\n")] = '\0';
 
-// Send command to server
-void send_command(int client_socket, const char *command) {
-    char buffer[BUFFER_SIZE];
-    sprintf(buffer, "%s\r\n", command);
-    send(client_socket, buffer, strlen(buffer), 0);
+		//compare & handle commands
+		if (strncmp(buffer, "USER", 4) == 0 || strncmp(buffer, "PASS", 4) == 0)
+		{
+			write(client_socket, buffer, strlen(buffer));
+			receiveResponse(client_socket);
+		}
+		else if (strcmp(buffer, "QUIT") == 0)
+		{
+			write(client_socket, "QUIT", strlen("QUIT"));
+			break ;
+		}
+		else if (strncmp(buffer, "!LIST", 5) == 0 || strncmp(buffer, "!PWD", 4) == 0)
+		{
+			write(client_socket, buffer, strlen(buffer));
 
-    memset(buffer, 0, BUFFER_SIZE);
-    read(client_socket, buffer, BUFFER_SIZE);
-    printf("%s", buffer);
-}
+			char response[BUFFER_SIZE];
+			memset(response, 0, BUFFER_SIZE);
+			read(client_socket, response, BUFFER_SIZE);
 
-void send_port_command(int controlSocket) {
-    int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in dataAddr;
-    memset(&dataAddr, 0, sizeof(dataAddr));
-    dataAddr.sin_family = AF_INET;
-    dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    dataAddr.sin_port = 0;
+			if (strncmp(response, "100", 3) == 0)
+			{
+				if (strncmp(buffer, "!LIST", 5) == 0)
+					system("ls");
+				else if (strncmp(buffer, "!PWD", 4) == 0)
+				{
+					system("pwd");
+					printf(".");
+				}
+			}
+			else
+				printf("%s", response);
+		}
+		else if (strncmp(buffer, "!CWD", 4) == 0)
+		{
+			write(client_socket, buffer, strlen(buffer));
 
-    bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr));
+			char response[BUFFER_SIZE];
+			memset(response, 0, BUFFER_SIZE);
+			read(client_socket, response, BUFFER_SIZE);
 
-    // Get port number
-    socklen_t len = sizeof(dataAddr);
-    getsockname(dataSocket, (struct sockaddr *)&dataAddr, &len);
+			if (strncmp(response, "100", 3) == 0)
+			{
+				char *directory = getName(buffer);
 
-    int port = ntohs(dataAddr.sin_port);
-    unsigned char p1 = port / 256;
-    unsigned char p2 = port % 256;
+				if (chdir(directory) == 0)
+				{
+					//directory change success
+					printf(" 200 directory changed to %s.\n", directory);
+				}
+				else
+					printf("550 Failed to change directory.\n");
+				free(directory);
+			}
+			else
+				printf("%s", response);
+		}
+		else if (strncmp(buffer, "PWD", 3) == 0)
+		{
+			write(client_socket, buffer, strlen(buffer));
+			receiveResponse(client_socket);
+		}
+		
+		else if (strncmp(buffer, "CWD", 3) == 0)
+		{
+			write(client_socket, buffer, strlen(buffer));
+			receiveResponse(client_socket);
+		}
+		else if (strncmp(buffer, "LIST", 4) == 0) // add RETR STOR
+		{
+			data_socket = send_port_command(client_socket); // Prepare data connection
+			send_command(client_socket, buffer);
 
-    unsigned char *ipParts = (unsigned char *)&dataAddr.sin_addr.s_addr;
-    
-    char command[255];
-    sprintf(command, "PORT %d,%d,%d,%d,%d,%d", ipParts[0], ipParts[1], ipParts[2], ipParts[3], p1, p2);
-
-    // PORT command to server
-    send(controlSocket, command, strlen(command), 0);
-
-    listen(dataSocket, 1); // Listen for connection
-}
-
-
-// Function to receive a file
-void receive_file(int dataSocket, const char *filename) {
-    FILE *file = fopen(filename, "wb");
-    char buffer[BUFFER_SIZE];
-    int bytesReceived;
-
-    while ((bytesReceived = recv(dataSocket, buffer, BUFFER_SIZE, 0)) > 0) {
-        fwrite(buffer, 1, bytesReceived, file);
-    }
-
-    fclose(file);
-    close(dataSocket);
-}
-
-// Function to send a file
-void send_file(int dataSocket, const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    char buffer[BUFFER_SIZE];
-    int bytesRead;
-
-    while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
-        send(dataSocket, buffer, bytesRead, 0);
-    }
-
-    fclose(file);
-    close(dataSocket);
-}
-
-
-
-int main() {
-    const char *server_address = "127.0.0.1";
-    int client_socket;
-    connect_to_server(server_address, &client_socket);
-    char buffer[BUFFER_SIZE];
-
-    char command[256];
-    int dataSocket = -1;
-
-    // Send commands to server
-    while (1) {
-        printf("ftp> ");
-        fgets(command, sizeof(command), stdin);
-
-        size_t len = strlen(command);
-        if (len > 0 && command[len - 1] == '\n') {
-            command[len - 1] = '\0';
-        }
-
-        if (strcmp(command, "QUIT") == 0) {
-            send_command(client_socket, "QUIT");
-            break;
-        }
-        else if (strcmp(command, "LIST") == 0 || strncmp(command, "RETR", 4) == 0 || strncmp(command, "STOR", 4) == 0) {
-            // LIST command is handled here
-            send_port_command(client_socket); // Prepare data connection
-            send_command(client_socket, command);
-
-            if (strncmp(command, "RETR", 4) == 0) {
-                char filename[256];
-                sscanf(command + 5, "%s", filename);
-                                
-                memset(buffer, 0, BUFFER_SIZE);
-                read(client_socket, buffer, BUFFER_SIZE); // check 200
-                printf("%s", buffer);
-                
-                receive_file(dataSocket, filename); // handle receive_file
-                
-                do {
-                    memset(buffer, 0, BUFFER_SIZE);
-                    read(client_socket, buffer, BUFFER_SIZE);
-                    printf("%s", buffer);
-                } while (!strstr(buffer, "226 Transfer completed."));
-            }
-
-            else if (strncmp(command, "STOR", 4) == 0) {
-                char filename[256];
-                sscanf(command + 5, "%s", filename);
-                send_file(dataSocket, filename); // handle send_file
-            }
-        }
-        else if (strncmp(command, "!LIST", 5) == 0) {
-            system("ls");
-        }
-        else {
-            send_command(client_socket, command);
-        }
-    }
-
-    close(client_socket);
-    return 0;
+			if (strncmp(buffer, "LIST", 4) == 0)
+			{
+				
+				while (1)
+				{
+					memset(buffer, 0, BUFFER_SIZE);
+					int bytesRead = read(data_socket, buffer, BUFFER_SIZE);
+					if (bytesRead <= 0)
+						break; 
+					printf("%.*s", bytesRead, buffer);
+				}
+				close(data_socket);
+				receiveResponse(client_socket);
+			}
+		}	
+		else
+		{
+			write(client_socket, "INVALID", strlen("INVALID"));
+			receiveResponse(client_socket);
+		}
+	}
+	return (0);
 }

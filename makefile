@@ -1,10 +1,37 @@
-all: ftp_server.o ftp_client.o
+CNAME		= ftp_client
 
-ftp_server.o: ftp_server.c
-	gcc -o ftp_server ftp_server.c
+SNAME		= ftp_server
 
-ftp_client.o: ftp_client.c
-	gcc -o ftp_client ftp_client.c
+SRCC_FILE	= ftp_client.c client_utils.c client_dataConnect.c
+
+SRCS_FILE	= ftp_server.c server_utils.c server_dataConnect.c
+
+OBJC		= ${SRCC_FILE:.c=.o}
+
+OBJS		= ${SRCS_FILE:.c=.o}
+
+CC			= gcc
+
+CFLAGS		= -Wall -Wextra -Werror -g
+
+RM			= rm -rf
+
+all: ${CNAME} ${SNAME}
+
+${CNAME}: ${OBJC}
+	${CC} ${CFLAGS} ${OBJC} -o ${CNAME}
+
+${SNAME}: ${OBJS}
+	${CC} ${CFLAGS} ${OBJS} -o ${SNAME} -lbsd
 
 clean:
-	rm -f ftp_server ftp_client
+	${RM} ${OBJC}
+	${RM} ${OBJS}
+
+fclean:	clean
+	${RM} ${CNAME}
+	${RM} ${SNAME}
+	
+re:	fclean all
+
+.PHONY:	all clean fclean re
