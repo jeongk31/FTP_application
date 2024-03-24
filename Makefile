@@ -23,7 +23,7 @@ ifeq ($(UNAME_S),Linux)
 	LIBS = -lbsd
 endif
 ifeq ($(UNAME_S),Darwin)
-	LIBS = -lsocket -lnsl
+	LIBS = ""
 endif
 
 all: ${CNAME} ${SNAME}
