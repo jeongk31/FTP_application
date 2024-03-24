@@ -51,6 +51,12 @@ int send_port_command(int controlSocket)
 
 	bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr));
 
+	if (listen(dataSocket, 1) < 0) { 
+		perror("data socket listen");
+		close(dataSocket);
+		exit(EXIT_FAILURE);
+	}
+
 	// Get port number
 	socklen_t len = sizeof(dataAddr);
 	getsockname(dataSocket, (struct sockaddr *)&dataAddr, &len);

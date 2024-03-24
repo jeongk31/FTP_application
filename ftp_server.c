@@ -285,10 +285,10 @@ int	main(void)
 							write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
 							
 							// Execute ls command and save output to a temporary file
-							//system("ls > temp.txt");
+							system("ls > temp.txt");
 
 							//read lines of the temporary file, send to client through dataSocket
-							/* FILE *file = fopen("temp.txt", "r");
+							FILE *file = fopen("temp.txt", "r");
 							if (file == NULL)
 							{
 								perror("Server opening temporary file");
@@ -296,20 +296,25 @@ int	main(void)
 							}
 
 							char	line[BUFFER_SIZE];
+							char	result[BUFFER_SIZE];
+							bzero(result, strlen(result));
 							while (fgets(line, sizeof(line), file) != NULL)
-								write(dataFd, line, strlen(line));
-							
-							fclose(file); */
+								strcat(result, line);
+								//write(dataSocket, line, strlen(line));
+							fclose(file);
 
 							//remove temporary file
 							//remove("temp.txt");
 
 							//just test
 							//write(dataSocket, "000 Test String\r\n", strlen("000 Test String\r\n"));
-							send(dataSocket, "000 Test String\r\n", strlen("000 Test String\r\n"), 0);
+							//send(dataSocket, "000 Test String\r\n", strlen("000 Test String\r\n"), 0);
 
 							//close data socket
 							close(dataSocket);
+							printf("result: %s\n", result);
+
+							write(fdConnect, result, strlen(result));
 
 							write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
 							
