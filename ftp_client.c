@@ -55,6 +55,14 @@ int	main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	//tmp printing port #
+	struct sockaddr_in localAddress;
+	socklen_t addressLength = sizeof(localAddress);
+	getsockname(client_socket, (struct sockaddr *)&localAddress, &addressLength);
+
+	printf("Client's Port: %d\n", ntohs(localAddress.sin_port));
+
+
 	//wait for server to send response (initial connection)
 	receiveResponse(client_socket);
 
