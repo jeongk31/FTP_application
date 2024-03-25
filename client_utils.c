@@ -71,28 +71,46 @@ void connect_to_server(const char *server_address, int *client_socket) {
 }
 
 //send PORT
+static int next_data_port = -1;
 void send_port_command(int controlSocket) {
+	if (next_data_port == -1) {
+        struct sockaddr_in localAddress;
+        socklen_t addressLength = sizeof(localAddress);
+        getsockname(controlSocket, (struct sockaddr *)&localAddress, &addressLength);
+        next_data_port = ntohs(localAddress.sin_port) + 1;
+    }
+
     int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in dataAddr;
     memset(&dataAddr, 0, sizeof(dataAddr));
     dataAddr.sin_family = AF_INET;
     dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    dataAddr.sin_port = 0;
+    dataAddr.sin_port = htons(next_data_port);
 
-    bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr));
+	if (bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) < 0) {
+        perror("bind failed in send_port_command");
+        close(dataSocket);
+        exit(EXIT_FAILURE);
+    }
 
-    // Get port number
-    socklen_t len = sizeof(dataAddr);
-    getsockname(dataSocket, (struct sockaddr *)&dataAddr, &len);
+	if (listen(dataSocket, 1) < 0) {
+        perror("listen failed in send_port_command");
+        close(dataSocket);
+        exit(EXIT_FAILURE);
+    }
 
-    int port = ntohs(dataAddr.sin_port);
-    unsigned char p1 = port / 256;
-    unsigned char p2 = port % 256;
+    unsigned char p1 = next_data_port / 256;
+    unsigned char p2 = next_data_port % 256;
 
-    unsigned char *ipParts = (unsigned char *)&dataAddr.sin_addr.s_addr;
-    
+	printf("Using new data port: %d\n", next_data_port);
+
     char command[255];
-    sprintf(command, "PORT %d,%d,%d,%d,%d,%d", ipParts[0], ipParts[1], ipParts[2], ipParts[3], p1, p2);
+    sprintf(command, "PORT 127,0,0,1,%d,%d", p1, p2);
+    send(controlSocket, command, strlen(command), 0);
+
+	receiveResponse(controlSocket);
+
+    next_data_port++;
 
     // PORT command to server
     send(controlSocket, command, strlen(command), 0);
