@@ -223,15 +223,6 @@ int	main(void)
 						else
 							write(fdConnect, "202 Command not implemented.\r\n", strlen("202 Command not implemented.\r\n"));
 					}
-					else if (strncmp(buffer, "PORT", 4) == 0)
-					{
-						int h1, h2, h3, h4, p1, p2;
-						sscanf(buffer, "PORT %d,%d,%d,%d,%d,%d", &h1, &h2, &h3, &h4, &p1, &p2);
-						dataPort = (p1 * 256) + p2;
-						sprintf(clientIp, "%d.%d.%d.%d", h1, h2, h3, h4);
-						write(fdConnect, "200 PORT command successful.\r\n", strlen("200 PORT command successful.\r\n"));
-							
-					}
 					else if (strncmp(buffer, "!CWD", 4) == 0)
 					{
 						if (countWords(buffer) != 2)
@@ -265,6 +256,72 @@ int	main(void)
 						else
 							write(fdConnect, "100 Command okay.\r\n", strlen("100 Command okay.\r\n"));
 					}
+					else if (strncmp(buffer, "PORT", 4) == 0)
+					{
+						int h1, h2, h3, h4, p1, p2;
+            			sscanf(buffer, "PORT %d,%d,%d,%d,%d,%d", &h1, &h2, &h3, &h4, &p1, &p2);
+            			dataPort = (p1 * 256) + p2;
+            			sprintf(clientIp, "%d.%d.%d.%d", h1, h2, h3, h4);
+						write(fdConnect, "200 PORT command successful.\r\n", strlen("200 PORT command successful.\r\n"));
+							
+					}
+					//check for RETR
+					// Check for RETR command
+        			else if (strncmp(buffer, "RETR", 4) == 0) {
+        			    char filename[256];
+        			    sscanf(buffer + 5, "%s", filename);
+
+            		// open the file
+            		FILE *file = fopen(filename, "rb");
+            		if (file == NULL) {
+						write(fdConnect, "550 No such file or directory.\r\n", strlen("550 No such file or directory.\r\n"));
+            			
+            		} else {
+            		    write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
+							
+
+                	int dataSocket = setup_data_connection(clientIp, dataPort);
+                	char fileBuffer[BUFFER_SIZE];
+                	int bytesRead;
+
+                	// read file and send it over data connection
+                	while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
+                	    send(dataSocket, fileBuffer, bytesRead, 0);
+                	}
+                	fclose(file);
+                	close(dataSocket);
+
+               		write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+							
+           			}
+        		}
+					// Check for STOR command
+        			else if (strncmp(buffer, "STOR", 4) == 0)
+					{
+        			    char filename[256];
+        			    int dataSocket = setup_data_connection(clientIp, dataPort);
+        			    sscanf(buffer + 5, "%s", filename);
+
+            			FILE *file = fopen(filename, "wb");
+            			if (file == NULL) {
+							write(fdConnect, "Could not create file.\r\n", strlen("Could not create file.\r\n"));
+            			}
+						else {
+							write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
+							
+
+            			    int bytes;
+            			    char fileBuffer[BUFFER_SIZE];
+            			    if ((bytes = recv(dataSocket, fileBuffer, BUFFER_SIZE, 0)) > 0) {
+            			        fwrite(fileBuffer, 1, bytes, file);
+            			    }
+            			    fclose(file);
+            			    close(dataSocket);
+
+							write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+							
+            			}
+        			}
 					else if(strncmp(buffer, "LIST", 4) == 0)
 					{
 						if (countWords(buffer) != 1)
@@ -304,7 +361,7 @@ int	main(void)
 							fclose(file);
 
 							//remove temporary file
-							//remove("temp.txt");
+							remove("temp.txt");
 
 							//just test
 							//write(dataSocket, "000 Test String\r\n", strlen("000 Test String\r\n"));
@@ -319,7 +376,8 @@ int	main(void)
 							write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
 							
 						}
-					}
+
+					}	
 					
 				}
 			}

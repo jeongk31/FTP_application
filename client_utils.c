@@ -39,44 +39,67 @@ int	countWords(const char *str)
 	return (count);
 }
 
-//send PORT
-int send_port_command(int controlSocket)
-{
-	int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
-	struct sockaddr_in dataAddr;
-	memset(&dataAddr, 0, sizeof(dataAddr));
-	dataAddr.sin_family = AF_INET;
-	dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	dataAddr.sin_port = 0;
+// Connect to server
+void connect_to_server(const char *server_address, int *client_socket) {
+    struct sockaddr_in serverAddr;
 
-	bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr));
+    // Create socket
+    *client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (*client_socket < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
 
-	if (listen(dataSocket, 1) < 0) { 
-		perror("data socket listen");
-		close(dataSocket);
-		exit(EXIT_FAILURE);
-	}
+    // Connect to server
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(DATA_PORT);
 
-	// Get port number
-	socklen_t len = sizeof(dataAddr);
-	getsockname(dataSocket, (struct sockaddr *)&dataAddr, &len);
+    if (inet_pton(AF_INET, server_address, &serverAddr.sin_addr) <= 0) {
+        perror("Invalid address/ Address not supported");
+        exit(EXIT_FAILURE);
+    }
 
-	int port = ntohs(dataAddr.sin_port);
-	unsigned char p1 = port / 256;
-	unsigned char p2 = port % 256;
+    if (connect(*client_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Connection Failed");
+        exit(EXIT_FAILURE);
+    }
 
-	unsigned char *ipParts = (unsigned char *)&dataAddr.sin_addr.s_addr;
-
-	char command[255];
-	sprintf(command, "PORT %d,%d,%d,%d,%d,%d", ipParts[0], ipParts[1], ipParts[2], ipParts[3], p1, p2);
-
-	//PORT command to server
-	send(controlSocket, command, strlen(command), 0);
-
-	receiveResponse(controlSocket);
-
-	return dataSocket;
+    char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);
+    read(*client_socket, buffer, BUFFER_SIZE);
+    printf("%s", buffer);
 }
+
+//send PORT
+void send_port_command(int controlSocket) {
+    int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in dataAddr;
+    memset(&dataAddr, 0, sizeof(dataAddr));
+    dataAddr.sin_family = AF_INET;
+    dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    dataAddr.sin_port = 0;
+
+    bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr));
+
+    // Get port number
+    socklen_t len = sizeof(dataAddr);
+    getsockname(dataSocket, (struct sockaddr *)&dataAddr, &len);
+
+    int port = ntohs(dataAddr.sin_port);
+    unsigned char p1 = port / 256;
+    unsigned char p2 = port % 256;
+
+    unsigned char *ipParts = (unsigned char *)&dataAddr.sin_addr.s_addr;
+    
+    char command[255];
+    sprintf(command, "PORT %d,%d,%d,%d,%d,%d", ipParts[0], ipParts[1], ipParts[2], ipParts[3], p1, p2);
+
+    // PORT command to server
+    send(controlSocket, command, strlen(command), 0);
+
+    listen(dataSocket, 1); // Listen for connection
+}
+
 
 void receiveResponse(int client_socket)
 {

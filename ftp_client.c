@@ -1,10 +1,41 @@
 #include "client.h"
 
+
+// Function to receive a file
+void receive_file(int dataSocket, const char *filename) {
+    FILE *file = fopen(filename, "wb");
+    char buffer[BUFFER_SIZE];
+    int bytesReceived;
+
+    while ((bytesReceived = recv(dataSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        fwrite(buffer, 1, bytesReceived, file);
+    }
+
+    fclose(file);
+    close(dataSocket);
+}
+
+// Function to send a file
+void send_file(int dataSocket, const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    char buffer[BUFFER_SIZE];
+    int bytesRead;
+
+    while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
+        send(dataSocket, buffer, bytesRead, 0);
+    }
+
+    fclose(file);
+    close(dataSocket);
+}
+
+
+
 int	main(void)
 {
 	struct sockaddr_in	server_address;
 	int					client_socket;
-	int					data_socket;
+	int					data_socket = -1;
 	char				buffer[BUFFER_SIZE];
 
 	if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -103,15 +134,39 @@ int	main(void)
 			write(client_socket, buffer, strlen(buffer));
 			receiveResponse(client_socket);
 		}
-		else if (strncmp(buffer, "LIST", 4) == 0) // add RETR STOR
+		else if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0 || strncmp(buffer, "STOR", 4) == 0) // add RETR STOR
 		{
-			data_socket = send_port_command(client_socket); // Prepare data connection
-			send_command(client_socket, buffer);
+			// LIST command is handled here
+            send_port_command(client_socket); // Prepare data connection
+            send_command(client_socket, buffer);
 
-			if (strncmp(buffer, "LIST", 4) == 0)
-			{
-				
-				while (1)
+            if (strncmp(buffer, "RETR", 4) == 0) {
+                char filename[256];
+                sscanf(buffer + 5, "%s", filename);
+                                
+                memset(buffer, 0, BUFFER_SIZE);
+                read(client_socket, buffer, BUFFER_SIZE); // check 200
+                printf("%s", buffer);
+                
+                receive_file(data_socket, filename); // handle receive_file
+                
+                do {
+					/////printf("tmp: %s\n", buffer);
+                    memset(buffer, 0, BUFFER_SIZE);
+                    read(client_socket, buffer, BUFFER_SIZE);
+                    printf("%s", buffer);
+					/////printf("\tcompare value: %d\n", strncmp(buffer, "226", 3));
+                } while (strncmp(buffer, "226", 3) != 0);
+				//////printf("leaving if statement\n");
+            }
+
+            else if (strncmp(buffer, "STOR", 4) == 0) {
+                char filename[256];
+                sscanf(buffer + 5, "%s", filename);
+                send_file(data_socket, filename); // handle send_file
+            }
+			else if (strncmp(buffer, "LIST", 4) == 0) {
+                while (1)
 				{
 					memset(buffer, 0, BUFFER_SIZE);
 					int bytesRead = read(data_socket, buffer, BUFFER_SIZE);
@@ -121,7 +176,8 @@ int	main(void)
 				}
 				close(data_socket);
 				receiveResponse(client_socket);
-			}
+            }
+			////////printf("exiting list, retr, stor\n");
 		}	
 		else
 		{

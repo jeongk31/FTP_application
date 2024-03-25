@@ -21,7 +21,7 @@
 /* client_utils.c */
 void	send_command(int client_socket, const char *command);
 int		countWords(const char *str);
-int		send_port_command(int controlSocket);
+void send_port_command(int controlSocket);
 void	receiveResponse(int client_socket);
 char*	getName(const char *str);
 
