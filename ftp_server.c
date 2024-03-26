@@ -157,7 +157,7 @@ int	main(void)
 						else
 						{
 							write(fdConnect, "221 Service closing control connection.\r\n", strlen("221 Service closing control connection.\r\n"));
-							printf("One user left the server!\n");
+							printf("Closed!\n");
 							close(fdConnect);
 							exit(EXIT_SUCCESS);
 						}
@@ -264,7 +264,7 @@ int	main(void)
 						}
 						else {
 							write(fdConnect, "100 Command okay.\r\n", strlen("100 Command okay.\r\n"));
-							printf("Printing info based on client current directory\n");
+							printf("Listing directory\n");
 						}
 					}
 					else if (strncmp(buffer, "PORT", 4) == 0)
@@ -293,39 +293,26 @@ int	main(void)
 						else
 						{
         			    	char filename[256];
-        			    	sscanf(buffer + 5, "%s", filename);
+							sscanf(buffer + 5, "%s", filename);
 
-            				// open the file
-            				FILE *file = fopen(filename, "rb");
-            				if (file == NULL) {
-								write(fdConnect, "550 No such file or directory.\r\n", strlen("550 No such file or directory.\r\n"));
-            				} else {
-            				    write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
-								printf("File okay, beginning data connections\n");
-								printf("Connecting to Client Transfer Socket...\n");
+							FILE *file = fopen(filename, "rb");
+							if (file == NULL) {
+								write(fdConnect, "550 File not found.\r\n", 21);
+							} else {
+								write(fdConnect, "150 Opening data connection.\r\n", 30);
 
-                				int dataSocket = setup_data_connection(clientIp, dataPort);
-								if (dataSocket < 0) {
-									printf("Could not create data connection.\n");
-									fclose(file);
-									continue;
-								}
+								int dataSocket = setup_data_connection(clientIp, dataPort);
+								char fileBuffer[BUFFER_SIZE];
+								int bytesRead;
 
-								printf("Connection Successful\n");
-
-                				char fileBuffer[BUFFER_SIZE];
-                				int bytesRead;
-
-								// read file and send it over data connection
 								while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
-								    send(dataSocket, fileBuffer, bytesRead, 0);
+									send(dataSocket, fileBuffer, bytesRead, 0);
 								}
+
 								fclose(file);
 								close(dataSocket);
-
-								write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
-								printf("226 Transfer complete\n");
-           					}
+								write(fdConnect, "226 Transfer complete.\r\n", 25);
+							}
 						}
         			}
 					// check for STOR command
