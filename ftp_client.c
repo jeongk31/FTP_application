@@ -160,22 +160,28 @@ int	main(void)
 
             if (strncmp(buffer, "RETR", 4) == 0) {
                 char filename[256];
-                sscanf(buffer + 5, "%s", filename);
-                                
-                memset(buffer, 0, BUFFER_SIZE);
-                //read(client_socket, buffer, BUFFER_SIZE); // check 200
-                printf("%s", buffer);
-                
-                receive_file(data_socket, filename); // handle receive_file
-                
-                do {
-					//printf("tmp: %s\n", buffer);
-                    memset(buffer, 0, BUFFER_SIZE);
-                    read(client_socket, buffer, BUFFER_SIZE);
-                    printf("%s", buffer);
-					//printf("\tcompare value: %d\n", strncmp(buffer, "226", 3));
-                } while (strncmp(buffer, "226", 3) != 0);
-				//printf("leaving if statement\n");
+			sscanf(buffer + 5, "%s", filename);
+
+			// Assume data_socket is already correctly set up for receiving data
+			FILE *file = fopen(filename, "wb");
+			if (file == NULL) {
+				printf("Failed to open file for writing.\n");
+				return 1; // Or handle error appropriately
+			}
+
+char fileBuffer[BUFFER_SIZE];
+int bytesReceived;
+
+while ((bytesReceived = recv(data_socket, fileBuffer, BUFFER_SIZE, 0)) > 0) {
+    fwrite(fileBuffer, 1, bytesReceived, file);
+}
+
+
+
+fclose(file);
+close(data_socket); // Assuming data_socket is the correct socket for data transfer
+
+printf("File %s received successfully.\n", filename);
             }
 
             else if (strncmp(buffer, "STOR", 4) == 0) {
