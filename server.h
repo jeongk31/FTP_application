@@ -16,7 +16,6 @@
 
 #define PORT 21
 #define BUFFER_SIZE 1024
-#define DATA_PORT 2021
 #define MAX_ATTEMPTS 5
 
 /* server_utils.c */
