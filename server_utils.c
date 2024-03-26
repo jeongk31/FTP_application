@@ -7,7 +7,7 @@ int	countWords(const char *str)
 
 	while (*str != '\0')
 	{
-		//urrent character is whitespace
+		//current character is whitespace
 		if (isspace(*str))
 		{
 			//previously inside a word, increment word count and reset flag
@@ -19,7 +19,7 @@ int	countWords(const char *str)
 		}
 		else //current character not whitespace
 			inWord = true;
-		str++; // Move to the next character
+		str++;
 	}
 
 	//count+1 if  last character not whitespace (to count last word)
@@ -42,11 +42,11 @@ char* getName(const char *str)
 		{
 			if (inWord)
 			{
-				count++; // Increment word count when encountering whitespace after a word
+				count++; 
 				inWord = false;
 				if (count == 2)
-				{ // Check if this is the second word
-					start = i + 1; // Set start index to the character after whitespace
+				{
+					start = i + 1;
 					inWord = true;
 				}
 			}
@@ -61,8 +61,8 @@ char* getName(const char *str)
 			}
 		}
 
-		if (count == 2 && !inWord) { // If the second word ends
-			end = i; // Set end index
+		if (count == 2 && !inWord) {
+			end = i;
 			break;
 		}
 	}
