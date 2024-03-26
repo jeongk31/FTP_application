@@ -55,16 +55,15 @@ int	main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	//wait for server to send response (initial connection)
+	receiveResponse(client_socket);
+	
 	//tmp printing port #
 	struct sockaddr_in localAddress;
 	socklen_t addressLength = sizeof(localAddress);
 	getsockname(client_socket, (struct sockaddr *)&localAddress, &addressLength);
 
 	printf("Client's Port: %d\n", ntohs(localAddress.sin_port));
-
-
-	//wait for server to send response (initial connection)
-	receiveResponse(client_socket);
 
 	while (1)
 	{
@@ -146,6 +145,7 @@ int	main(void)
 		{
 			// LIST command is handled here
             send_port_command(client_socket); // Prepare data connection
+			
             send_command(client_socket, buffer);
 
             if (strncmp(buffer, "RETR", 4) == 0) {
