@@ -39,6 +39,7 @@ int	countWords(const char *str)
 	return (count);
 }
 
+
 // Connect to server
 void connect_to_server(const char *server_address, int *client_socket) {
     struct sockaddr_in serverAddr;
@@ -70,30 +71,36 @@ void connect_to_server(const char *server_address, int *client_socket) {
     printf("%s", buffer);
 }
 
-//send PORT
 static int next_data_port = -1;
+
+//send PORT
 void send_port_command(int controlSocket) {
-	if (next_data_port == -1) {
+    if (next_data_port == -1) {
         struct sockaddr_in localAddress;
         socklen_t addressLength = sizeof(localAddress);
         getsockname(controlSocket, (struct sockaddr *)&localAddress, &addressLength);
-        next_data_port = ntohs(localAddress.sin_port) + 1;
+        next_data_port = ntohs(localAddress.sin_port) + 1; // Dynamic port allocation start
     }
 
-    int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
+    int dataSocket;
     struct sockaddr_in dataAddr;
-    memset(&dataAddr, 0, sizeof(dataAddr));
-    dataAddr.sin_family = AF_INET;
-    dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    dataAddr.sin_port = htons(next_data_port);
+    bool isBound = false;
+    while (!isBound) {
+        dataSocket = socket(AF_INET, SOCK_STREAM, 0);
+        memset(&dataAddr, 0, sizeof(dataAddr));
+        dataAddr.sin_family = AF_INET;
+        dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        dataAddr.sin_port = htons(next_data_port);
 
-	if (bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) < 0) {
-        perror("bind failed in send_port_command");
-        close(dataSocket);
-        exit(EXIT_FAILURE);
+        if (bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) == 0) {
+            isBound = true;
+        } else {
+            next_data_port++; // Try the next port if bind fails
+            close(dataSocket);
+        }
     }
 
-	if (listen(dataSocket, 1) < 0) {
+    if (listen(dataSocket, 1) < 0) {
         perror("listen failed in send_port_command");
         close(dataSocket);
         exit(EXIT_FAILURE);
@@ -101,22 +108,16 @@ void send_port_command(int controlSocket) {
 
     unsigned char p1 = next_data_port / 256;
     unsigned char p2 = next_data_port % 256;
-
-	printf("Using new data port: %d\n", next_data_port);
+    printf("Using new data port: %d\n", next_data_port);
 
     char command[255];
     sprintf(command, "PORT 127,0,0,1,%d,%d", p1, p2);
     send(controlSocket, command, strlen(command), 0);
+    receiveResponse(controlSocket);
+    next_data_port++; // Prepare for the next data connection
 
-	receiveResponse(controlSocket);
-
-    next_data_port++;
-
-    // PORT command to server
-    send(controlSocket, command, strlen(command), 0);
-
-    listen(dataSocket, 1); // Listen for connection
 }
+
 
 
 void receiveResponse(int client_socket)
