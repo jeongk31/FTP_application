@@ -279,23 +279,23 @@ int	main(void)
             		FILE *file = fopen(filename, "rb");
             		if (file == NULL) {
 						write(fdConnect, "550 No such file or directory.\r\n", strlen("550 No such file or directory.\r\n"));
-            			
-            		} else {
+            		} else
+					{
             		    write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
 							
 
-                	int dataSocket = setup_data_connection(clientIp, dataPort);
-                	char fileBuffer[BUFFER_SIZE];
-                	int bytesRead;
+                		int dataSocket = setup_data_connection(clientIp, dataPort);
+                		char fileBuffer[BUFFER_SIZE];
+                		int bytesRead;
 
-                	// read file and send it over data connection
-                	while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
-                	    send(dataSocket, fileBuffer, bytesRead, 0);
-                	}
-                	fclose(file);
-                	close(dataSocket);
-
-               		write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+						// read file and send it over data connection
+						while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
+						    send(dataSocket, fileBuffer, bytesRead, 0);
+						}
+						fclose(file);
+						close(dataSocket);
+						
+						write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
 							
            			}
         		}

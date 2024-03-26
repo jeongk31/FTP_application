@@ -153,7 +153,7 @@ int	main(void)
                 sscanf(buffer + 5, "%s", filename);
                                 
                 memset(buffer, 0, BUFFER_SIZE);
-                read(client_socket, buffer, BUFFER_SIZE); // check 200
+                //read(client_socket, buffer, BUFFER_SIZE); // check 200
                 printf("%s", buffer);
                 
                 receive_file(data_socket, filename); // handle receive_file
