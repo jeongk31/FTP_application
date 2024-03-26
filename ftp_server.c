@@ -157,7 +157,7 @@ int	main(void)
 						else
 						{
 							write(fdConnect, "221 Service closing control connection.\r\n", strlen("221 Service closing control connection.\r\n"));
-							printf("Closed!\n");
+							printf("One user left the server!\n");
 							close(fdConnect);
 							exit(EXIT_SUCCESS);
 						}
@@ -264,7 +264,7 @@ int	main(void)
 						}
 						else {
 							write(fdConnect, "100 Command okay.\r\n", strlen("100 Command okay.\r\n"));
-							printf("Listing directory\n");
+							printf("Printing info based on client current directory\n");
 						}
 					}
 					else if (strncmp(buffer, "PORT", 4) == 0)
