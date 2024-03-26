@@ -18,7 +18,7 @@ int	countWords(const char *str)
 
 	while (*str != '\0')
 	{
-		//urrent character is whitespace
+		//current character is whitespace
 		if (isspace(*str))
 		{
 			//previously inside a word, increment word count and reset flag
@@ -30,7 +30,7 @@ int	countWords(const char *str)
 		}
 		else //current character not whitespace
 			inWord = true;
-		str++; // Move to the next character
+		str++; // move to the next character
 	}
 
 	//count+1 if  last character not whitespace (to count last word)
@@ -40,46 +40,46 @@ int	countWords(const char *str)
 }
 
 
-// Connect to server
-void connect_to_server(const char *server_address, int *client_socket) {
-    struct sockaddr_in serverAddr;
+// connect to server
+// void connect_to_server(const char *server_address, int *client_socket) {
+//     struct sockaddr_in serverAddr;
 
-    // Create socket
-    *client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (*client_socket < 0) {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
-    }
+//     // Create socket
+//     *client_socket = socket(AF_INET, SOCK_STREAM, 0);
+//     if (*client_socket < 0) {
+//         perror("Socket creation failed");
+//         exit(EXIT_FAILURE);
+//     }
 
-    // Connect to server
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(DATA_PORT);
+//     // connect to server
+//     serverAddr.sin_family = AF_INET;
+//     serverAddr.sin_port = htons(DATA_PORT);
 
-    if (inet_pton(AF_INET, server_address, &serverAddr.sin_addr) <= 0) {
-        perror("Invalid address/ Address not supported");
-        exit(EXIT_FAILURE);
-    }
+//     if (inet_pton(AF_INET, server_address, &serverAddr.sin_addr) <= 0) {
+//         perror("Invalid address/ Address not supported");
+//         exit(EXIT_FAILURE);
+//     }
 
-    if (connect(*client_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Connection Failed");
-        exit(EXIT_FAILURE);
-    }
+//     if (connect(*client_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+//         perror("Connection Failed");
+//         exit(EXIT_FAILURE);
+//     }
 
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, BUFFER_SIZE);
-    read(*client_socket, buffer, BUFFER_SIZE);
-    printf("%s", buffer);
-}
+//     char buffer[BUFFER_SIZE];
+//     memset(buffer, 0, BUFFER_SIZE);
+//     read(*client_socket, buffer, BUFFER_SIZE);
+//     printf("%s", buffer);
+// }
 
 static int next_data_port = -1;
 
 //send PORT
-void send_port_command(int controlSocket) {
+int send_port_command(int controlSocket) {
     if (next_data_port == -1) {
         struct sockaddr_in localAddress;
         socklen_t addressLength = sizeof(localAddress);
         getsockname(controlSocket, (struct sockaddr *)&localAddress, &addressLength);
-        next_data_port = ntohs(localAddress.sin_port) + 1; // Dynamic port allocation start
+        next_data_port = ntohs(localAddress.sin_port) + 1; // dynamic port allocation
     }
 
     int dataSocket;
@@ -95,7 +95,7 @@ void send_port_command(int controlSocket) {
         if (bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) == 0) {
             isBound = true;
         } else {
-            next_data_port++; // Try the next port if bind fails
+            next_data_port++; // try the next port if bind fails
             close(dataSocket);
         }
     }
@@ -108,14 +108,13 @@ void send_port_command(int controlSocket) {
 
     unsigned char p1 = next_data_port / 256;
     unsigned char p2 = next_data_port % 256;
-    printf("Using new data port: %d\n", next_data_port);
 
     char command[255];
     sprintf(command, "PORT 127,0,0,1,%d,%d", p1, p2);
     send(controlSocket, command, strlen(command), 0);
     receiveResponse(controlSocket);
-    next_data_port++; // Prepare for the next data connection
-
+    next_data_port++; // prep for the next data connection
+	return (dataSocket);
 }
 
 
@@ -161,11 +160,11 @@ char* getName(const char *str)
 		{
 			if (inWord)
 			{
-				count++; // Increment word count when encountering whitespace after a word
+				count++;
 				inWord = false;
 				if (count == 2)
-				{ // Check if this is the second word
-					start = i + 1; // Set start index to the character after whitespace
+				{
+					start = i + 1; // set start index to  character after whitespace
 					inWord = true;
 				}
 			}
