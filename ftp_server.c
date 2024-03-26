@@ -46,6 +46,8 @@ int	main(void)
 		//selec ready descriptor
 		select(fdMax, &readSet, NULL, NULL, NULL);
 
+		printf("Server's Port: %d\n", ntohs(serverAddr.sin_port)); // tmp
+
 		//accept connection if tcp socket readable
 		if (FD_ISSET(fdListen, &readSet))
 		{
@@ -371,7 +373,7 @@ int	main(void)
 
 							//close data socket
 							close(dataSocket);
-							printf("result: %s\n", result);
+							// printf("result: %s\n", result);
 
 							write(fdConnect, result, strlen(result));
 
