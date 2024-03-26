@@ -1,13 +1,15 @@
 #include "client.h"
 
 
-// Function to receive a file
+// receive a file
 void receive_file(int dataSocket, const char *filename) {
+	printf("receive files, data socket: %d\n", dataSocket);
     FILE *file = fopen(filename, "wb");
     char buffer[BUFFER_SIZE];
     int bytesReceived;
 
     while ((bytesReceived = recv(dataSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+		printf("\twriting\n");
         fwrite(buffer, 1, bytesReceived, file);
     }
 
@@ -15,7 +17,7 @@ void receive_file(int dataSocket, const char *filename) {
     close(dataSocket);
 }
 
-// Function to send a file
+// send a file
 void send_file(int dataSocket, const char *filename) {
     FILE *file = fopen(filename, "rb");
     char buffer[BUFFER_SIZE];
@@ -54,16 +56,23 @@ int	main(void)
 		perror("connect failed");
 		exit(EXIT_FAILURE);
 	}
+	// initial connection message
+	printf("Hello!! Please Authenticate to run server commands\n");
+    printf("1. type \"USER\" followed by a space and your username\n");
+    printf("2. type \"PASS\" followed by a space and your password\n\n");
+    
+    printf("\"QUIT\" to close connection at any moment\n");
+    printf("Once Authenticated\n");
+    printf("this is the list of commands :\n");
+    printf("\"STOR\" + space + filename |to send a file to the server\n");
+    printf("\"RETR\" + space + filename |to download a file from the server\n");
+    printf("\"LIST\" |to list all the files under the current server directory\n");
+    printf("\"CWD\" + space + directory |to change the current server directory\n");
+    printf("\"PWD\" to display the current server directory\n");
+    printf("Add \"!\" before the last three commands to apply them locally\n\n");
 
 	//wait for server to send response (initial connection)
 	receiveResponse(client_socket);
-	
-	//tmp printing port #
-	struct sockaddr_in localAddress;
-	socklen_t addressLength = sizeof(localAddress);
-	getsockname(client_socket, (struct sockaddr *)&localAddress, &addressLength);
-
-	printf("Client's Port: %d\n", ntohs(localAddress.sin_port));
 
 	while (1)
 	{
@@ -141,10 +150,11 @@ int	main(void)
 			write(client_socket, buffer, strlen(buffer));
 			receiveResponse(client_socket);
 		}
-		else if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0 || strncmp(buffer, "STOR", 4) == 0) // add RETR STOR
+		else if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0 || strncmp(buffer, "STOR", 4) == 0)
 		{
 			// LIST command is handled here
-            send_port_command(client_socket); // Prepare data connection
+            data_socket = send_port_command(client_socket);
+			printf("data socket: %d\n", data_socket);
 			
             send_command(client_socket, buffer);
 
@@ -159,13 +169,13 @@ int	main(void)
                 receive_file(data_socket, filename); // handle receive_file
                 
                 do {
-					/////printf("tmp: %s\n", buffer);
+					//printf("tmp: %s\n", buffer);
                     memset(buffer, 0, BUFFER_SIZE);
                     read(client_socket, buffer, BUFFER_SIZE);
                     printf("%s", buffer);
-					/////printf("\tcompare value: %d\n", strncmp(buffer, "226", 3));
+					//printf("\tcompare value: %d\n", strncmp(buffer, "226", 3));
                 } while (strncmp(buffer, "226", 3) != 0);
-				//////printf("leaving if statement\n");
+				//printf("leaving if statement\n");
             }
 
             else if (strncmp(buffer, "STOR", 4) == 0) {
@@ -185,7 +195,7 @@ int	main(void)
 				close(data_socket);
 				receiveResponse(client_socket);
             }
-			////////printf("exiting list, retr, stor\n");
+			//printf("exiting list, retr, stor\n");
 		}	
 		else
 		{
