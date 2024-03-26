@@ -3,11 +3,11 @@
 int	main(void)
 {
 	struct sockaddr_in	clientAddr, serverAddr;
-	socklen_t			length; //len
+	socklen_t			length;
 	pid_t				childpid;
 	char				buffer[BUFFER_SIZE];
-	int					fdListen, fdConnect; //listenfd, connfd
-	int					fdMax; //nready(change to ready), maxfdp1
+	int					fdListen, fdConnect;
+	int					fdMax;
 	fd_set				readSet;
 
 	char* welcome = "220 Service ready for new user.\r\n";
@@ -46,15 +46,14 @@ int	main(void)
 		//selec ready descriptor
 		select(fdMax, &readSet, NULL, NULL, NULL);
 
-		printf("Server's Port: %d\n", ntohs(serverAddr.sin_port)); // tmp
-
 		//accept connection if tcp socket readable
 		if (FD_ISSET(fdListen, &readSet))
 		{
 			length = sizeof(clientAddr);
 			fdConnect = accept(fdListen, (struct sockaddr *)&clientAddr, &length);
 
-			printf("Server's Port: %d\n", ntohs(serverAddr.sin_port)); // tmp
+			printf("Connection established with user %d\n", fdConnect);
+            printf("Their port: %d\n", ntohs(clientAddr.sin_port));
 
 			if ((childpid = fork()) == 0)
 			{
@@ -72,7 +71,6 @@ int	main(void)
 				{
 					bzero(buffer, sizeof(buffer));
 					read(fdConnect, buffer, sizeof(buffer));
-					printf("Message from tcp client: %s\n", buffer);
 
 					//compare & handle commands
 					if (strncmp(buffer, "USER", 4) == 0)
@@ -96,11 +94,13 @@ int	main(void)
 							else if (username == NULL || validity == 0) //invalid username
 							{
 								write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
+								printf("Incorrect username\n");
 								continue ;
 							}
 							else //valid username
 							{
 								write(fdConnect, "331 Username OK, need password.\r\n", strlen("331 Username OK, need password.\r\n"));
+								printf("Successful username verification\n");
 								checkedUser = true;
 							}
 						}
@@ -132,11 +132,13 @@ int	main(void)
 							if (password == NULL || validity == 0)
 							{
 								write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
+								printf("Incorrect password\n");
 								continue;
 							}
 							else //valid password
 							{
 								write(fdConnect, "230 User logged in, proceed.\r\n", strlen("230 User logged in, proceed.\r\n"));
+								printf("Successful login\n");
 								authenticated = true;
 								if (username != NULL)
 									free(username);
@@ -155,6 +157,7 @@ int	main(void)
 						else
 						{
 							write(fdConnect, "221 Service closing control connection.\r\n", strlen("221 Service closing control connection.\r\n"));
+							printf("Closed!\n");
 							close(fdConnect);
 							exit(EXIT_SUCCESS);
 						}
@@ -193,7 +196,7 @@ int	main(void)
 							write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 							continue;
 						}
-						else if (!authenticated) // Assuming authenticated is a boolean flag indicating authentication status
+						else if (!authenticated)
 						{
 							write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 							continue ;
@@ -204,7 +207,8 @@ int	main(void)
 
 							if (chdir(directory) == 0)
 							{
-								// Directory changed successfully
+								// directory changed successfully
+								printf("Changing directory to: %s\n", directory);
 								write(fdConnect, "200 directory changed to ", strlen("200 directory changed to "));
 								write(fdConnect, directory, strlen(directory));
 								write(fdConnect, ".\r\n", 3);
@@ -212,6 +216,7 @@ int	main(void)
 							else
 							{
 								write(fdConnect, "550 Failed to change directory.\r\n", strlen("550 Failed to change directory.\r\n"));
+								printf("550 Failed to change directory\n");
 							}
 
 							free(directory);
@@ -234,15 +239,15 @@ int	main(void)
 							write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 							continue;
 						}
-						else if (!authenticated) // Assuming authenticated is a boolean flag indicating authentication status
+						else if (!authenticated)
 						{
 							write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 							continue ;
 						}
 						else
 						{
-							// Acknowledge the !LIST command
 							write(fdConnect, "100 Command okay.\r\n", strlen("100 Command okay.\r\n"));
+							printf("Changing directory\n");
 						}
 					}
 					else if (strncmp(buffer, "!LIST", 5) == 0 || strncmp(buffer, "!PWD", 4) == 0)
@@ -252,13 +257,15 @@ int	main(void)
 							write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 							continue;
 						}
-						else if (!authenticated) // Assuming authenticated is a boolean flag indicating authentication status
+						else if (!authenticated) 
 						{
 							write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 							continue ;
 						}
-						else
+						else {
 							write(fdConnect, "100 Command okay.\r\n", strlen("100 Command okay.\r\n"));
+							printf("Listing directory\n");
+						}
 					}
 					else if (strncmp(buffer, "PORT", 4) == 0)
 					{
@@ -266,11 +273,11 @@ int	main(void)
             			sscanf(buffer, "PORT %d,%d,%d,%d,%d,%d", &h1, &h2, &h3, &h4, &p1, &p2);
             			dataPort = (p1 * 256) + p2;
             			sprintf(clientIp, "%d.%d.%d.%d", h1, h2, h3, h4);
+    					printf("Port received: %d,%d,%d,%d,%d,%d\n", h1, h2, h3, h4, p1, p2);
 						write(fdConnect, "200 PORT command successful.\r\n", strlen("200 PORT command successful.\r\n"));
 							
 					}
 					//check for RETR
-					// Check for RETR command
         			else if (strncmp(buffer, "RETR", 4) == 0)
 					{
 						if (countWords(buffer) != 2)
@@ -292,12 +299,20 @@ int	main(void)
             				FILE *file = fopen(filename, "rb");
             				if (file == NULL) {
 								write(fdConnect, "550 No such file or directory.\r\n", strlen("550 No such file or directory.\r\n"));
-            				} else
-							{
+            				} else {
             				    write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
-
+								printf("File okay, beginning data connections\n");
+								printf("Connecting to Client Transfer Socket...\n");
 
                 				int dataSocket = setup_data_connection(clientIp, dataPort);
+								if (dataSocket < 0) {
+									printf("Could not create data connection.\n");
+									fclose(file);
+									continue;
+								}
+
+								printf("Connection Successful\n");
+
                 				char fileBuffer[BUFFER_SIZE];
                 				int bytesRead;
 
@@ -309,11 +324,11 @@ int	main(void)
 								close(dataSocket);
 
 								write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
-
+								printf("226 Transfer complete\n");
            					}
 						}
         			}
-					// Check for STOR command
+					// check for STOR command
         			else if (strncmp(buffer, "STOR", 4) == 0)
 					{
 						if (countWords(buffer) != 2)
@@ -338,7 +353,7 @@ int	main(void)
             				}
 							else {
 								write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
-
+								printf("File okay, beginning data connections\n");
 
             				    int bytes;
             				    char fileBuffer[BUFFER_SIZE];
@@ -349,6 +364,7 @@ int	main(void)
             				    close(dataSocket);
 
 								write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+								printf("226 Transfer complete\n");
 
             				}
 						}
@@ -369,10 +385,20 @@ int	main(void)
 						{
 							//format(2 words) & authentication good
 							int dataSocket = setup_data_connection(clientIp, dataPort);
+							printf("File okay, beginning data connections\n");
+							printf("Connecting to Client Transfer Socket...\n");
+
+							if (dataSocket < 0) {
+								printf("Connection to Client Transfer Socket Failed\n");
+								continue;
+							} else {
+								printf("Connection Successful\n");
+							}
 
 							write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
-							
-							// Execute ls command and save output to a temporary file
+							printf("Listing directory\n");
+
+							// execute ls command and save output to a temporary file
 							system("ls > temp.txt");
 
 							//read lines of the temporary file, send to client through dataSocket
@@ -405,10 +431,12 @@ int	main(void)
 							write(fdConnect, result, strlen(result));
 
 							write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
-							
+							printf("226 Transfer complete\n");
 						}
 
 					}	
+
+				printf("\n");
 					
 				}
 			}
