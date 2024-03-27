@@ -4,7 +4,7 @@ SNAME		= ftp_server
 
 SRCC_FILE	= ftp_client.c client_utils.c client_dataConnect.c
 
-SRCS_FILE	= ftp_server.c server_utils.c server_dataConnect.c
+SRCS_FILE	= ftp_server.c server_utils.c serverCommands.c server_dataConnect.c
 
 OBJC		= ${SRCC_FILE:.c=.o}
 

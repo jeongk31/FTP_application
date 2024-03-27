@@ -154,7 +154,7 @@ int	main(void)
 				if (chdir(directory) == 0)
 				{
 					//directory change success
-					printf(" 200 directory changed to %s.\n", directory);
+					printf("200 directory changed to %s.\n", directory);
 				}
 				else
 					printf("550 Failed to change directory.\n");
@@ -236,7 +236,7 @@ int	main(void)
 					printf("%s", serverResponse);
 				} while (strstr(serverResponse, "226 Transfer complete") == NULL && strstr(serverResponse, "550 No such file or directory") == NULL);
             }
-			else if (strncmp(command, "LIST", 4) == 0) {
+			else if (status == 1 && strncmp(command, "LIST", 4) == 0) {
                 while (1)
 				{
 					memset(buffer, 0, BUFFER_SIZE);
