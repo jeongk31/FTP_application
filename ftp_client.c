@@ -114,6 +114,7 @@ int	main(void)
 		else if (strcmp(buffer, "QUIT") == 0)
 		{
 			write(client_socket, "QUIT", strlen("QUIT"));
+			receiveResponse(client_socket);
 			break ;
 		}
 		else if (strncmp(buffer, "!LIST", 5) == 0 || strncmp(buffer, "!PWD", 4) == 0)
