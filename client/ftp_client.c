@@ -1,61 +1,5 @@
 #include "client.h"
 
-// receive a file
-void receive_file(int dataSocket, const char *filename) {
-    printf("Receiving file: %s\n", filename);
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
-        perror("Failed to open file on client");
-        close(dataSocket);
-        return;
-    }
-
-    char buffer[BUFFER_SIZE];
-    int bytesReceived;
-
-    while ((bytesReceived = recv(dataSocket, buffer, BUFFER_SIZE, 0)) > 0) {
-		//printf("receive file read buffer: %s\n", buffer);
-        fwrite(buffer, 1, bytesReceived, file);
-    }
-
-    if (bytesReceived < 0) {
-        perror("Receive failed");
-    }
-
-    fclose(file);
-    close(dataSocket);
-    printf("File transfer complete.\n");
-}
-
-
-// send a file
-void send_file(int dataSocket, const char *filename) {
-    FILE *file = fopen(filename, "rb");
-
-	if (!file) {
-        send(dataSocket, "550 File not found.\r\n", strlen("550 File not found.\r\n"), 0);
-        printf("550 File not found.\n");
-		close(dataSocket);
-        return;
-    }
-	else
-	{
-
-    	char buffer[BUFFER_SIZE];
-    	int bytesRead;
-
-    	while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
-			//printf("sending server a file: %s\n", buffer);
-    	    send(dataSocket, buffer, bytesRead, 0);
-    	}
-
-    	fclose(file);
-    	close(dataSocket);
-	}
-}
-
-
-
 int	main(void)
 {
 	struct sockaddr_in	server_address;
@@ -80,19 +24,7 @@ int	main(void)
 		exit(EXIT_FAILURE);
 	}
 	// initial connection message
-	printf("Hello!! Please Authenticate to run server commands\n");
-    printf("1. type \"USER\" followed by a space and your username\n");
-    printf("2. type \"PASS\" followed by a space and your password\n\n");
-    
-    printf("\"QUIT\" to close connection at any moment\n");
-    printf("Once Authenticated\n");
-    printf("this is the list of commands :\n");
-    printf("\"STOR\" + space + filename |to send a file to the server\n");
-    printf("\"RETR\" + space + filename |to download a file from the server\n");
-    printf("\"LIST\" |to list all the files under the current server directory\n");
-    printf("\"CWD\" + space + directory |to change the current server directory\n");
-    printf("\"PWD\" to display the current server directory\n");
-    printf("Add \"!\" before the last three commands to apply them locally\n\n");
+	printInitialPrompt();
 
 	//wait for server to send response (initial connection)
 	receiveResponse(client_socket);
@@ -119,136 +51,37 @@ int	main(void)
 			break ;
 		}
 		else if (strncmp(buffer, "!LIST", 5) == 0 || strncmp(buffer, "!PWD", 4) == 0)
-		{
-			write(client_socket, buffer, strlen(buffer));
+			handleClientInfo(client_socket, buffer);
 
-			char response[BUFFER_SIZE];
-			memset(response, 0, BUFFER_SIZE);
-			read(client_socket, response, BUFFER_SIZE);
-
-			if (strncmp(response, "100", 3) == 0)
-			{
-				if (strncmp(buffer, "!LIST", 5) == 0)
-					system("ls");
-				else if (strncmp(buffer, "!PWD", 4) == 0)
-				{
-					system("pwd");
-					printf(".");
-				}
-			}
-			else
-				printf("%s", response);
-		}
 		else if (strncmp(buffer, "!CWD", 4) == 0)
-		{
-			write(client_socket, buffer, strlen(buffer));
+			handleClientCwd(client_socket, buffer);
 
-			char response[BUFFER_SIZE];
-			memset(response, 0, BUFFER_SIZE);
-			read(client_socket, response, BUFFER_SIZE);
-
-			if (strncmp(response, "100", 3) == 0)
-			{
-				char *directory = getName(buffer);
-
-				if (chdir(directory) == 0)
-				{
-					//directory change success
-					printf("200 directory changed to %s.\n", directory);
-				}
-				else
-					printf("550 Failed to change directory.\n");
-				free(directory);
-			}
-			else
-				printf("%s", response);
-		}
-		else if (strncmp(buffer, "PWD", 3) == 0)
+		else if (strncmp(buffer, "PWD", 3) == 0 || strncmp(buffer, "CWD", 3) == 0)
 		{
 			write(client_socket, buffer, strlen(buffer));
 			receiveResponse(client_socket);
 		}
-		
-		else if (strncmp(buffer, "CWD", 3) == 0)
-		{
-			write(client_socket, buffer, strlen(buffer));
-			receiveResponse(client_socket);
-		}
+
 		else if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0 || strncmp(buffer, "STOR", 4) == 0)
 		{
-			// LIST command is handled here
-            data_socket = send_port_command(client_socket);
+
+			data_socket = send_port_command(client_socket);
 			char	command[256];
 			strncpy(command, buffer, 4);
 			command[4] = '\0';
 			
-            int status = send_command(client_socket, buffer);
+			//record status based on what message server sent back
+			int status = send_command(client_socket, buffer);
 
-            if (status == 1 && strncmp(command, "RETR", 4) == 0) {
-                char filename[256];
-                sscanf(buffer + 5, "%s", filename);
-                                
-                memset(buffer, 0, BUFFER_SIZE);
-                //printf("main: %s", buffer);
+			if (status == 1 && strncmp(command, "RETR", 4) == 0)
+				handleRetr(client_socket, data_socket, buffer);
 
-				struct sockaddr_in serverAddr;
-				socklen_t addrSize = sizeof(serverAddr);
-				int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
-				if (dataTransferSocket < 0) {
-					perror("Failed to accept data connection");
-					exit(EXIT_FAILURE);
-				}
-                printf("before receive file: %s\n", buffer);
-                receive_file(dataTransferSocket, filename); // handle receive_file
 
-				char serverResponse[BUFFER_SIZE];
-                
-                do {
-					memset(serverResponse, 0, BUFFER_SIZE);
-					read(client_socket, serverResponse, BUFFER_SIZE);
-					printf("%s", serverResponse);
-				} while (strstr(serverResponse, "226 Transfer complete") == NULL);
-				//printf("leaving if statement\n");
-            }
+			else if (status == 1 && strncmp(command, "STOR", 4) == 0)
+				handleStor(client_socket, data_socket, buffer);
 
-            else if (status == 1 && strncmp(command, "STOR", 4) == 0) {
-                char filename[256];
-                sscanf(buffer + 5, "%s", filename);
-
-				memset(buffer, 0, BUFFER_SIZE);//++++
-                //read(client_socket, buffer, BUFFER_SIZE); // check 200
-                printf("main: %s", buffer);//++++
-
-				struct sockaddr_in serverAddr;
-				socklen_t addrSize = sizeof(serverAddr);
-				int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
-				if (dataTransferSocket < 0) {
-					perror("Failed to accept data connection");
-					exit(EXIT_FAILURE);
-				}
-				//printf("before send file:%s\n", buffer);
-                send_file(dataTransferSocket, filename); // handle send_file
-				char serverResponse[BUFFER_SIZE];
-                
-                do {
-					memset(serverResponse, 0, BUFFER_SIZE);
-					read(client_socket, serverResponse, BUFFER_SIZE);
-					printf("%s", serverResponse);
-				} while (strstr(serverResponse, "226 Transfer complete") == NULL && strstr(serverResponse, "550 No such file or directory") == NULL);
-            }
-			else if (status == 1 && strncmp(command, "LIST", 4) == 0) {
-                while (1)
-				{
-					memset(buffer, 0, BUFFER_SIZE);
-					int bytesRead = read(data_socket, buffer, BUFFER_SIZE);
-					if (bytesRead <= 0)
-						break; 
-					printf("%.*s", bytesRead, buffer);
-				}
-				close(data_socket);
-				receiveResponse(client_socket);
-            }
-			//printf("exiting list, retr, stor\n");
+			else if (status == 1 && strncmp(command, "LIST", 4) == 0)
+				handleList(client_socket, data_socket, buffer);
 		}	
 		else
 		{

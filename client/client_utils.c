@@ -1,20 +1,5 @@
 #include "client.h"
 
-int send_command(int client_socket, const char *command)
-{
-	char buffer[BUFFER_SIZE];
-	sprintf(buffer, "%s\r\n", command);
-	send(client_socket, buffer, strlen(buffer), 0);
-
-	memset(buffer, 0, BUFFER_SIZE);
-	read(client_socket, buffer, BUFFER_SIZE);
-	printf("%s", buffer);
-
-	if (strncmp(buffer, "550", 3) == 0 || strncmp(buffer, "503", 3) == 0  || strncmp(buffer, "530", 3) == 0 ) //no file
-		return (0);
-	return (1);
-}
-
 int	countWords(const char *str)
 {
 	bool	inWord = false;
@@ -43,111 +28,6 @@ int	countWords(const char *str)
 	return (count);
 }
 
-
-// connect to server
-// void connect_to_server(const char *server_address, int *client_socket) {
-//     struct sockaddr_in serverAddr;
-
-//     // Create socket
-//     *client_socket = socket(AF_INET, SOCK_STREAM, 0);
-//     if (*client_socket < 0) {
-//         perror("Socket creation failed");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     // connect to server
-//     serverAddr.sin_family = AF_INET;
-//     serverAddr.sin_port = htons(DATA_PORT);
-
-//     if (inet_pton(AF_INET, server_address, &serverAddr.sin_addr) <= 0) {
-//         perror("Invalid address/ Address not supported");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     if (connect(*client_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-//         perror("Connection Failed");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     char buffer[BUFFER_SIZE];
-//     memset(buffer, 0, BUFFER_SIZE);
-//     read(*client_socket, buffer, BUFFER_SIZE);
-//     printf("%s", buffer);
-// }
-
-static int next_data_port = -1;
-
-//send PORT
-int send_port_command(int controlSocket) {
-    if (next_data_port == -1) {
-        struct sockaddr_in localAddress;
-        socklen_t addressLength = sizeof(localAddress);
-        getsockname(controlSocket, (struct sockaddr *)&localAddress, &addressLength);
-        next_data_port = ntohs(localAddress.sin_port) + 1; // dynamic port allocation
-    }
-
-    int dataSocket;
-    struct sockaddr_in dataAddr;
-    bool isBound = false;
-    while (!isBound) {
-        dataSocket = socket(AF_INET, SOCK_STREAM, 0);
-        memset(&dataAddr, 0, sizeof(dataAddr));
-        dataAddr.sin_family = AF_INET;
-        dataAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        dataAddr.sin_port = htons(next_data_port);
-
-        if (bind(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) == 0) {
-            isBound = true;
-        } else {
-            next_data_port++; // try the next port if bind fails
-            close(dataSocket);
-        }
-    }
-
-    if (listen(dataSocket, 1) < 0) {
-        perror("listen failed in send_port_command");
-        close(dataSocket);
-        exit(EXIT_FAILURE);
-    }
-
-    unsigned char p1 = next_data_port / 256;
-    unsigned char p2 = next_data_port % 256;
-
-    char command[255];
-    sprintf(command, "PORT 127,0,0,1,%d,%d", p1, p2);
-    send(controlSocket, command, strlen(command), 0);
-    receiveResponse(controlSocket);
-    next_data_port++; // prep for the next data connection
-	return (dataSocket);
-}
-
-
-
-void receiveResponse(int client_socket)
-{
-	char buffer[BUFFER_SIZE];
-	int readValue;
-	bool receivedResponse = false;
-
-	while (!receivedResponse)
-	{
-		//read server response
-		memset(buffer, 0, BUFFER_SIZE);
-		readValue = read(client_socket, buffer, BUFFER_SIZE);
-		if (readValue <= 0)
-		{
-			if (errno != EWOULDBLOCK && errno != EAGAIN)
-			{
-				perror("read failed");
-				exit(EXIT_FAILURE);
-			}
-			//readValue <= 0 & not due to non-blocking socket: server sent nothing yet
-			continue; //continue loop & wait for server response
-		}
-		printf("%s", buffer);
-		receivedResponse = true; //response received
-	}
-}
 
 
 char* getName(const char *str)
@@ -202,4 +82,21 @@ char* getName(const char *str)
 	word[length] = '\0';
 
 	return (word);
+}
+
+void	printInitialPrompt(void)
+{
+	printf("Hello!! Please Authenticate to run server commands\n");
+	printf("1. type \"USER\" followed by a space and your username\n");
+	printf("2. type \"PASS\" followed by a space and your password\n\n");
+	
+	printf("\"QUIT\" to close connection at any moment\n");
+	printf("Once Authenticated\n");
+	printf("this is the list of commands :\n");
+	printf("\"STOR\" + space + filename |to send a file to the server\n");
+	printf("\"RETR\" + space + filename |to download a file from the server\n");
+	printf("\"LIST\" |to list all the files under the current server directory\n");
+	printf("\"CWD\" + space + directory |to change the current server directory\n");
+	printf("\"PWD\" to display the current server directory\n");
+	printf("Add \"!\" before the last three commands to apply them locally\n\n");
 }

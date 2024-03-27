@@ -2,7 +2,7 @@ CNAME		= ftp_client
 
 SNAME		= ftp_server
 
-SRCC_FILE	= client/ftp_client.c client/client_utils.c client/client_dataConnect.c
+SRCC_FILE	= client/ftp_client.c client/client_utils.c client/client_dataConnect.c client/client_communicate.c client/clientCommands.c
 
 SRCS_FILE	= server/ftp_server.c server/server_utils.c server/serverCommands.c server/server_dataConnect.c
 
