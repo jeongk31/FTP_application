@@ -52,8 +52,8 @@ int	main(void)
 			length = sizeof(clientAddr);
 			fdConnect = accept(fdListen, (struct sockaddr *)&clientAddr, &length);
 
-			printf("Connection established with user %d\n", fdConnect);
-            printf("Their port: %d\n", ntohs(clientAddr.sin_port));
+			//printf("Connection established with user %d\n", fdConnect);
+            //printf("Their port: %d\n", ntohs(clientAddr.sin_port));
 
 			if ((childpid = fork()) == 0)
 			{
