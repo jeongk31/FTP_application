@@ -31,15 +31,26 @@ void receive_file(int dataSocket, const char *filename) {
 // send a file
 void send_file(int dataSocket, const char *filename) {
     FILE *file = fopen(filename, "rb");
-    char buffer[BUFFER_SIZE];
-    int bytesRead;
 
-    while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
-        send(dataSocket, buffer, bytesRead, 0);
+	if (!file) {
+        //send(dataSocket, "550 File not found.\r\n", strlen("550 File not found.\r\n"), 0);
+        printf("550 File not found.\n");
+		close(dataSocket);
+        return;
     }
+	else
+	{
 
-    fclose(file);
-    close(dataSocket);
+    	char buffer[BUFFER_SIZE];
+    	int bytesRead;
+
+    	while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
+    	    send(dataSocket, buffer, bytesRead, 0);
+    	}
+
+    	fclose(file);
+    	close(dataSocket);
+	}
 }
 
 
@@ -203,10 +214,30 @@ int	main(void)
 				//printf("leaving if statement\n");
             }
 
-            else if (strncmp(command, "STOR", 4) == 0) {
+            else if (status == 1 && strncmp(command, "STOR", 4) == 0) {
                 char filename[256];
                 sscanf(buffer + 5, "%s", filename);
-                send_file(data_socket, filename); // handle send_file
+
+				memset(buffer, 0, BUFFER_SIZE);//++++
+                //read(client_socket, buffer, BUFFER_SIZE); // check 200
+                printf("main: %s", buffer);//++++
+
+				struct sockaddr_in serverAddr;
+				socklen_t addrSize = sizeof(serverAddr);
+				int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
+				if (dataTransferSocket < 0) {
+					perror("Failed to accept data connection");
+					exit(EXIT_FAILURE);
+				}
+				printf("before send file:%s\n", buffer);
+                send_file(dataTransferSocket, filename); // handle send_file
+				char serverResponse[BUFFER_SIZE];
+                
+                do {
+					memset(serverResponse, 0, BUFFER_SIZE);
+					read(client_socket, serverResponse, BUFFER_SIZE);
+					printf("%s", serverResponse);
+				} while (strstr(serverResponse, "226 Transfer complete") == NULL);
             }
 			else if (strncmp(command, "LIST", 4) == 0) {
                 while (1)

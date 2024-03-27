@@ -345,6 +345,7 @@ int	main(void)
 						}
 						else
 						{
+							//extract file name from
         			    	char filename[256];
         			    	int dataSocket = setup_data_connection(clientIp, dataPort);
         			    	sscanf(buffer + 5, "%s", filename);
