@@ -209,9 +209,9 @@ int	main(void)
 							{
 								// directory changed successfully
 								printf("Changing directory to: %s\n", directory);
-								write(fdConnect, "200 directory changed to ", strlen("200 directory changed to "));
-								write(fdConnect, directory, strlen(directory));
-								write(fdConnect, ".\r\n", 3);
+								char responseMessage[512]; // Make sure this buffer is large enough to hold the entire message.
+								sprintf(responseMessage, "200 directory changed to %s.\r\n", directory);
+								write(fdConnect, responseMessage, strlen(responseMessage));
 							}
 							else
 							{
@@ -279,7 +279,7 @@ int	main(void)
 					}
 					//check for RETR
         			// Handling the RETR command in the server's main loop
-					if (strncmp(buffer, "RETR", 4) == 0)
+					else if (strncmp(buffer, "RETR", 4) == 0)
 					{
 						if (countWords(buffer) != 2)
 						{
@@ -299,7 +299,7 @@ int	main(void)
 					    	// Attempt to open the file for reading
 					    	FILE *file = fopen(filename, "rb");
 					    	if (file == NULL) {
-								printf("sending 550\n");
+								printf("Requested file not found\n");
 					    	    write(fdConnect, "550 File not found.\r\n", strlen("550 File not found.\r\n"));
 					    	} else {
 					    	    // Inform the client that the data connection will be opened
@@ -324,7 +324,7 @@ int	main(void)
 					    	    fclose(file);
 					    	    close(dataSocket);
 
-					    	    // Inform the client that the file transfer is complete
+					    	    // fInform the client that the file transfer is complete
 					    	    write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
 							}
 					    }
