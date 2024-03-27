@@ -180,20 +180,15 @@ int	main(void)
 			char	command[256];
 			strncpy(command, buffer, 4);
 			command[4] = '\0';
-			printf("command: %s\n", command);
-			printf("data socket: %d\n", data_socket);
 			
             int status = send_command(client_socket, buffer);
 
             if (status == 1 && strncmp(command, "RETR", 4) == 0) {
                 char filename[256];
                 sscanf(buffer + 5, "%s", filename);
-
-				//send_command(client_socket, buffer);//++++
                                 
-                memset(buffer, 0, BUFFER_SIZE);//++++
-                //read(client_socket, buffer, BUFFER_SIZE); // check 200
-                printf("main: %s", buffer);//++++
+                memset(buffer, 0, BUFFER_SIZE);
+                //printf("main: %s", buffer);
 
 				struct sockaddr_in serverAddr;
 				socklen_t addrSize = sizeof(serverAddr);
@@ -230,7 +225,7 @@ int	main(void)
 					perror("Failed to accept data connection");
 					exit(EXIT_FAILURE);
 				}
-				printf("before send file:%s\n", buffer);
+				//printf("before send file:%s\n", buffer);
                 send_file(dataTransferSocket, filename); // handle send_file
 				char serverResponse[BUFFER_SIZE];
                 
@@ -238,7 +233,7 @@ int	main(void)
 					memset(serverResponse, 0, BUFFER_SIZE);
 					read(client_socket, serverResponse, BUFFER_SIZE);
 					printf("%s", serverResponse);
-				} while (strstr(serverResponse, "226 Transfer complete") == NULL);
+				} while (strstr(serverResponse, "226 Transfer complete") == NULL && strstr(serverResponse, "550 No such file or directory") == NULL);
             }
 			else if (strncmp(command, "LIST", 4) == 0) {
                 while (1)

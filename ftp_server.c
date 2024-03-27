@@ -356,24 +356,31 @@ int	main(void)
             				}
 							else {
 								write(fdConnect, "150 File status okay; about to open data connection.\r\n", strlen("150 File status okay; about to open data connection.\r\n"));
-								printf("File okay, beginning data connections\n");
+								printf("Server's file creation okay, beginning data connections\n");
 
             				    int bytes;
             				    char fileBuffer[BUFFER_SIZE];
             				    if ((bytes = recv(dataSocket, fileBuffer, BUFFER_SIZE, 0)) > 0) {
 									if (strncmp(fileBuffer, "550", 3) != 0)
 									{
-										printf("file must exist!\n");
+										//printf("file must exist!\n");
             				        	fwrite(fileBuffer, 1, bytes, file);
 										fclose(file);
+
+										write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+										printf("226 Transfer complete\n");
 									}
 									else //client said file doesn't exist
+									{
+										write(fdConnect, "550 No such file or directory.\r\n", strlen("550 No such file or directory.\r\n"));
+										printf("File doesn't exist on client side\n");
 										remove(filename);
+									}
             				    }
             				    close(dataSocket);
 
-								write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
-								printf("226 Transfer complete\n");
+								//write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
+								//printf("226 Transfer complete\n");
 
             				}
 						}
@@ -394,7 +401,7 @@ int	main(void)
 						{
 							//format(2 words) & authentication good
 							int dataSocket = setup_data_connection(clientIp, dataPort);
-							printf("File okay, beginning data connections\n");
+							printf("Server's file creation okay, beginning data connections\n");
 							printf("Connecting to Client Transfer Socket...\n");
 
 							if (dataSocket < 0) {
