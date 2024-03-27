@@ -1,6 +1,6 @@
 #include "client.h"
 
-void send_command(int client_socket, const char *command)
+int send_command(int client_socket, const char *command)
 {
 	char buffer[BUFFER_SIZE];
 	sprintf(buffer, "%s\r\n", command);
@@ -9,6 +9,10 @@ void send_command(int client_socket, const char *command)
 	memset(buffer, 0, BUFFER_SIZE);
 	read(client_socket, buffer, BUFFER_SIZE);
 	printf("%s", buffer);
+
+	if (strncmp(buffer, "550", 3) == 0 || strncmp(buffer, "503", 3) == 0  || strncmp(buffer, "530", 3) == 0 ) //no file
+		return (0);
+	return (1);
 }
 
 int	countWords(const char *str)

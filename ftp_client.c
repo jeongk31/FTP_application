@@ -1,21 +1,32 @@
 #include "client.h"
 
-
 // receive a file
 void receive_file(int dataSocket, const char *filename) {
-	printf("receive files, data socket: %d\n", dataSocket);
+    printf("Receiving file: %s\n", filename);
     FILE *file = fopen(filename, "wb");
+    if (!file) {
+        perror("Failed to open file on client");
+        close(dataSocket);
+        return;
+    }
+
     char buffer[BUFFER_SIZE];
     int bytesReceived;
 
     while ((bytesReceived = recv(dataSocket, buffer, BUFFER_SIZE, 0)) > 0) {
-		printf("\twriting\n");
+		//printf("receive file read buffer: %s\n", buffer);
         fwrite(buffer, 1, bytesReceived, file);
+    }
+
+    if (bytesReceived < 0) {
+        perror("Receive failed");
     }
 
     fclose(file);
     close(dataSocket);
+    printf("File transfer complete.\n");
 }
+
 
 // send a file
 void send_file(int dataSocket, const char *filename) {
@@ -154,42 +165,50 @@ int	main(void)
 		{
 			// LIST command is handled here
             data_socket = send_port_command(client_socket);
+			char	command[256];
+			strncpy(command, buffer, 4);
+			command[4] = '\0';
+			printf("command: %s\n", command);
 			printf("data socket: %d\n", data_socket);
 			
-            send_command(client_socket, buffer);
+            int status = send_command(client_socket, buffer);
 
-            if (strncmp(buffer, "RETR", 4) == 0) {
+            if (status == 1 && strncmp(command, "RETR", 4) == 0) {
                 char filename[256];
-			sscanf(buffer + 5, "%s", filename);
+                sscanf(buffer + 5, "%s", filename);
 
-			// Assume data_socket is already correctly set up for receiving data
-			FILE *file = fopen(filename, "wb");
-			if (file == NULL) {
-				printf("Failed to open file for writing.\n");
-				return 1; // Or handle error appropriately
-			}
+				//send_command(client_socket, buffer);//++++
+                                
+                memset(buffer, 0, BUFFER_SIZE);//++++
+                //read(client_socket, buffer, BUFFER_SIZE); // check 200
+                printf("main: %s", buffer);//++++
 
-char fileBuffer[BUFFER_SIZE];
-int bytesReceived;
+				struct sockaddr_in serverAddr;
+				socklen_t addrSize = sizeof(serverAddr);
+				int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
+				if (dataTransferSocket < 0) {
+					perror("Failed to accept data connection");
+					exit(EXIT_FAILURE);
+				}
+                printf("before receive file: %s\n", buffer);
+                receive_file(dataTransferSocket, filename); // handle receive_file
 
-while ((bytesReceived = recv(data_socket, fileBuffer, BUFFER_SIZE, 0)) > 0) {
-    fwrite(fileBuffer, 1, bytesReceived, file);
-}
-
-
-
-fclose(file);
-close(data_socket); // Assuming data_socket is the correct socket for data transfer
-
-printf("File %s received successfully.\n", filename);
+				char serverResponse[BUFFER_SIZE];
+                
+                do {
+					memset(serverResponse, 0, BUFFER_SIZE);
+					read(client_socket, serverResponse, BUFFER_SIZE);
+					printf("%s", serverResponse);
+				} while (strstr(serverResponse, "226 Transfer complete") == NULL);
+				//printf("leaving if statement\n");
             }
 
-            else if (strncmp(buffer, "STOR", 4) == 0) {
+            else if (strncmp(command, "STOR", 4) == 0) {
                 char filename[256];
                 sscanf(buffer + 5, "%s", filename);
                 send_file(data_socket, filename); // handle send_file
             }
-			else if (strncmp(buffer, "LIST", 4) == 0) {
+			else if (strncmp(command, "LIST", 4) == 0) {
                 while (1)
 				{
 					memset(buffer, 0, BUFFER_SIZE);

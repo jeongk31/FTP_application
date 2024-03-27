@@ -278,43 +278,58 @@ int	main(void)
 							
 					}
 					//check for RETR
-        			else if (strncmp(buffer, "RETR", 4) == 0)
+        			// Handling the RETR command in the server's main loop
+					if (strncmp(buffer, "RETR", 4) == 0)
 					{
 						if (countWords(buffer) != 2)
 						{
 							write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 							continue;
 						}
-						if (!authenticated)
-						{
-							write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
-							continue ;
-						}
+					    if (!authenticated) {
+					        write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
+					        continue;
+					    }
 						else
 						{
-        			    	char filename[256];
-							sscanf(buffer + 5, "%s", filename);
+					    	// Extract the filename from the command
+					    	char filename[256];
+					    	sscanf(buffer + 5, "%s", filename);
 
-							FILE *file = fopen(filename, "rb");
-							if (file == NULL) {
-								write(fdConnect, "550 File not found.\r\n", 21);
-							} else {
-								write(fdConnect, "150 Opening data connection.\r\n", 30);
+					    	// Attempt to open the file for reading
+					    	FILE *file = fopen(filename, "rb");
+					    	if (file == NULL) {
+								printf("sending 550\n");
+					    	    write(fdConnect, "550 File not found.\r\n", strlen("550 File not found.\r\n"));
+					    	} else {
+					    	    // Inform the client that the data connection will be opened
+					    	    write(fdConnect, "150 Opening data connection.\r\n", strlen("150 Opening data connection.\r\n"));
 
-								int dataSocket = setup_data_connection(clientIp, dataPort);
-								char fileBuffer[BUFFER_SIZE];
-								int bytesRead;
+					    	    // Setup the data connection to the client
+					    	    int dataSocket = setup_data_connection(clientIp, dataPort);
+					    	    if (dataSocket < 0) {
+					    	        perror("Failed to setup data connection");
+					    	        fclose(file);
+					    	        continue;
+					    	    }
 
-								while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
-									send(dataSocket, fileBuffer, bytesRead, 0);
-								}
+					    	    // Send the file contents to the client
+					    	    char fileBuffer[BUFFER_SIZE];
+					    	    int bytesRead;
+					    	    while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
+					    	        send(dataSocket, fileBuffer, bytesRead, 0);
+					    	    }
 
-								fclose(file);
-								close(dataSocket);
-								write(fdConnect, "226 Transfer complete.\r\n", 25);
+					    	    // Cleanup
+					    	    fclose(file);
+					    	    close(dataSocket);
+
+					    	    // Inform the client that the file transfer is complete
+					    	    write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
 							}
-						}
-        			}
+					    }
+					}
+
 					// check for STOR command
         			else if (strncmp(buffer, "STOR", 4) == 0)
 					{
