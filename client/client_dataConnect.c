@@ -33,7 +33,6 @@ void send_file(int dataSocket, const char *filename)
 	if (!file)
 	{
 		send(dataSocket, "550 File not found.\r\n", strlen("550 File not found.\r\n"), 0);
-		printf("550 File not found.\n");
 		close(dataSocket);
 		return ;
 	}
