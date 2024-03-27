@@ -1,66 +1,30 @@
 #include "server.h"
-int setup_data_connection(char *clientIp, int dataPort) {
-    int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (dataSocket < 0) {
-        perror("Data socket");
-        exit(EXIT_FAILURE);
-    }
 
-    struct sockaddr_in dataAddr;
-    memset(&dataAddr, 0, sizeof(dataAddr));
-    dataAddr.sin_family = AF_INET;
-    dataAddr.sin_port = htons(dataPort);
-
-    if (inet_pton(AF_INET, clientIp, &dataAddr.sin_addr) <= 0) {
-        perror("Invalid address");
-        exit(EXIT_FAILURE);
-    }
-
-    if (connect(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) < 0) {
-        perror("Data port");
-        exit(EXIT_FAILURE);
-    }
-
-    return dataSocket;
-}
-
-
-/* char	*listFiles(void)
+int setup_data_connection(char *clientIp, int dataPort)
 {
-	FILE	*list = popen("ls -l", "r"); //system command
-	if (!list)
+	int dataSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (dataSocket < 0)
 	{
-		perror("Server file list");
+		perror("Data socket");
 		exit(EXIT_FAILURE);
 	}
 
-	//read list
-	char	fileList[BUFFER_SIZE];
-	size_t	bytes = fread(fileList, 1, sizeof(fileList), list);
-	pclose(list);
+	struct sockaddr_in dataAddr;
+	memset(&dataAddr, 0, sizeof(dataAddr));
+	dataAddr.sin_family = AF_INET;
+	dataAddr.sin_port = htons(dataPort);
 
-	//malloc for list string
-	char	*result = (char *)malloc(bytes + 1);
-	if (!result) //protection
+	if (inet_pton(AF_INET, clientIp, &dataAddr.sin_addr) <= 0)
 	{
-		perror("LIST: memory allocation");
+		perror("Invalid address");
 		exit(EXIT_FAILURE);
 	}
 
-	//copy fileList to malloc-ed result
-	memcpy(result, fileList, bytes);
-	result[bytes] = '\0'; //null termination
+	if (connect(dataSocket, (struct sockaddr *)&dataAddr, sizeof(dataAddr)) < 0)
+	{
+		perror("Data port");
+		exit(EXIT_FAILURE);
+	}
 
-	return (result);
+	return (dataSocket);
 }
-
-int	sendData(int dataSocket, const char *data)
-{
-	int	bytes = write(dataSocket, data, strlen(data));
-	if (bytes < 0)
-	{
-		perror("Server data connection: send data");
-		exit(EXIT_FAILURE);
-	}
-	return (bytes);
-} */
