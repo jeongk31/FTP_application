@@ -45,6 +45,7 @@ void send_file(int dataSocket, const char *filename) {
     	int bytesRead;
 
     	while ((bytesRead = fread(buffer, 1, BUFFER_SIZE, file)) > 0) {
+			//printf("sending server a file: %s\n", buffer);
     	    send(dataSocket, buffer, bytesRead, 0);
     	}
 

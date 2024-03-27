@@ -317,6 +317,7 @@ int	main(void)
 					    	    char fileBuffer[BUFFER_SIZE];
 					    	    int bytesRead;
 					    	    while ((bytesRead = fread(fileBuffer, 1, BUFFER_SIZE, file)) > 0) {
+									//printf("sending for RETR\n");
 					    	        send(dataSocket, fileBuffer, bytesRead, 0);
 					    	    }
 
@@ -364,7 +365,9 @@ int	main(void)
 									if (strncmp(fileBuffer, "550", 3) != 0)
 									{
 										//printf("file must exist!\n");
-            				        	fwrite(fileBuffer, 1, bytes, file);
+										fwrite(fileBuffer, 1, bytes, file);
+										while ((bytes = recv(dataSocket, fileBuffer, BUFFER_SIZE, 0)) > 0)
+            				        		fwrite(fileBuffer, 1, bytes, file);
 										fclose(file);
 
 										write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
