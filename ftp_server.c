@@ -361,9 +361,15 @@ int	main(void)
             				    int bytes;
             				    char fileBuffer[BUFFER_SIZE];
             				    if ((bytes = recv(dataSocket, fileBuffer, BUFFER_SIZE, 0)) > 0) {
-            				        fwrite(fileBuffer, 1, bytes, file);
+									if (strncmp(fileBuffer, "550", 3) != 0)
+									{
+										printf("file must exist!\n");
+            				        	fwrite(fileBuffer, 1, bytes, file);
+										fclose(file);
+									}
+									else //client said file doesn't exist
+										remove(filename);
             				    }
-            				    fclose(file);
             				    close(dataSocket);
 
 								write(fdConnect, "226 Transfer complete.\r\n", strlen("226 Transfer complete.\r\n"));
