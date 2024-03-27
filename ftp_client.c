@@ -175,13 +175,12 @@ int	main(void)
 		else if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0 || strncmp(buffer, "STOR", 4) == 0)
 		{
 			// LIST command is handled here
-			if (strncmp(buffer, "LIST", 4) == 0 || strncmp(buffer, "RETR", 4) == 0)
-            	data_socket = send_port_command(client_socket);
+            data_socket = send_port_command(client_socket);
 			char	command[256];
 			strncpy(command, buffer, 4);
 			command[4] = '\0';
-			// printf("command: %s\n", command);
-			// printf("data socket: %d\n", data_socket);
+			printf("command: %s\n", command);
+			printf("data socket: %d\n", data_socket);
 			
             int status = send_command(client_socket, buffer);
 
@@ -218,34 +217,27 @@ int	main(void)
             else if (status == 1 && strncmp(command, "STOR", 4) == 0) {
                 char filename[256];
                 sscanf(buffer + 5, "%s", filename);
-				FILE *file = fopen(filename, "rb");
 
-				if (file == NULL) {
-					printf("550 File not found.\n");
-				}
-				else {
-					data_socket = send_port_command(client_socket);
-					memset(buffer, 0, BUFFER_SIZE);//++++
-					//read(client_socket, buffer, BUFFER_SIZE); // check 200
-					printf("main: %s", buffer);//++++
+				memset(buffer, 0, BUFFER_SIZE);//++++
+                //read(client_socket, buffer, BUFFER_SIZE); // check 200
+                printf("main: %s", buffer);//++++
 
-					struct sockaddr_in serverAddr;
-					socklen_t addrSize = sizeof(serverAddr);
-					int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
-					if (dataTransferSocket < 0) {
-						perror("Failed to accept data connection");
-						exit(EXIT_FAILURE);
-					}
-					printf("before send file:%s\n", buffer);
-					send_file(dataTransferSocket, filename); // handle send_file
-					char serverResponse[BUFFER_SIZE];
-					
-					do {
-						memset(serverResponse, 0, BUFFER_SIZE);
-						read(client_socket, serverResponse, BUFFER_SIZE);
-						printf("%s", serverResponse);
-					} while (strstr(serverResponse, "226 Transfer complete") == NULL);
+				struct sockaddr_in serverAddr;
+				socklen_t addrSize = sizeof(serverAddr);
+				int dataTransferSocket = accept(data_socket, (struct sockaddr *)&serverAddr, &addrSize);
+				if (dataTransferSocket < 0) {
+					perror("Failed to accept data connection");
+					exit(EXIT_FAILURE);
 				}
+				printf("before send file:%s\n", buffer);
+                send_file(dataTransferSocket, filename); // handle send_file
+				char serverResponse[BUFFER_SIZE];
+                
+                do {
+					memset(serverResponse, 0, BUFFER_SIZE);
+					read(client_socket, serverResponse, BUFFER_SIZE);
+					printf("%s", serverResponse);
+				} while (strstr(serverResponse, "226 Transfer complete") == NULL);
             }
 			else if (strncmp(command, "LIST", 4) == 0) {
                 while (1)
