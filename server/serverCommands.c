@@ -215,7 +215,7 @@ void	handleRetr(int fdConnect, char *buffer, bool authenticated, char *clientIp,
 		write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 
 	//user not authenticated
-	if (!authenticated)
+	else if (!authenticated)
 		write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 
 	//valid user, handle command
@@ -268,7 +268,7 @@ void	handleStor(int fdConnect, char *buffer, bool authenticated, char *clientIp,
 		write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 
 	//user not authenticated
-	if (!authenticated)
+	else if (!authenticated)
 		write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 
 	//valid user, handle command
@@ -325,7 +325,7 @@ void	handleList(int fdConnect, char *buffer, bool authenticated, char *clientIp,
 		write(fdConnect, "503 Bad sequence of commands.\r\n", strlen("503 Bad sequence of commands.\r\n"));
 	
 	//user not authenticated
-	if (!authenticated)
+	else if (!authenticated)
 		write(fdConnect, "530 Not logged in.\r\n", strlen("530 Not logged in.\r\n"));
 
 	//valid user, handle command

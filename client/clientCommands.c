@@ -53,7 +53,6 @@ void	handleRetr(int client_socket, int data_socket, char *buffer)
 	sscanf(buffer + 5, "%s", filename);
 	
 	memset(buffer, 0, BUFFER_SIZE);
-	//printf("main: %s", buffer);
 
 	struct sockaddr_in serverAddr;
 	socklen_t addrSize = sizeof(serverAddr);
@@ -62,7 +61,6 @@ void	handleRetr(int client_socket, int data_socket, char *buffer)
 		perror("Failed to accept data connection");
 		exit(EXIT_FAILURE);
 	}
-	printf("before receive file: %s\n", buffer);
 	receive_file(dataTransferSocket, filename); // handle receive_file
 
 	char serverResponse[BUFFER_SIZE];
@@ -71,7 +69,7 @@ void	handleRetr(int client_socket, int data_socket, char *buffer)
 		memset(serverResponse, 0, BUFFER_SIZE);
 		read(client_socket, serverResponse, BUFFER_SIZE);
 		printf("%s", serverResponse);
-	} while (strstr(serverResponse, "226 Transfer complete") == NULL);
+	} while (strstr(serverResponse, "226 Transfer complete") == NULL && strstr(serverResponse, "503 Bad sequence of commands") == NULL);
 }
 
 void	handleStor(int client_socket, int data_socket, char *buffer)
